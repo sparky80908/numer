@@ -1,0 +1,101 @@
+# Making your first submission on Numerai
+
+## Introduction 
+This tutorial will go over how to create your first submission on Numerai.
+
+## Overview
+
+1. Using this notebook
+2. Download the datasets
+3. Train your first model
+4. Generate your first predictions
+4. Make your first submission
+
+
+---
+
+
+
+## 1. Using this notebook 
+
+This is an interactive notebook. You can execute code in each cell by pressing `shift+enter`. This requires you to login with your Google account.
+
+In order to make changes, you need to make a copy by `File -> Save a copy in Drive`.
+
+Let's start off by installing and importing our dependencies.
+
+# install dependencies
+!pip install pandas sklearn numerapi
+
+# import dependencies
+import pandas as pd
+import numerapi
+import sklearn.linear_model
+
+## 2. Download the datasets
+
+### Datasets 
+*   `training_data` is used to train your model
+*   `tournament_data` is used to evaluate your model
+
+### Column descriptions
+*   id: a randomized id that corresponds to a stock 
+*   era: a period of time
+*   data_type: either `train`, `validation`, `test`, or `live` 
+*   feature_*: abstract financial features of the stock 
+*   target: abstract measure of stock performance
+
+
+
+
+# download the latest training dataset (takes around 30s)
+training_data = pd.read_csv("https://numerai-public-datasets.s3-us-west-2.amazonaws.com/latest_numerai_training_data.csv.xz")
+training_data.head()
+
+# download the latest tournament dataset (takes around 30s)
+tournament_data = pd.read_csv("https://numerai-public-datasets.s3-us-west-2.amazonaws.com/latest_numerai_tournament_data.csv.xz")
+tournament_data.head()
+
+## 3. Train your first model
+Let's create a basic model using sklearn's linear regression.
+
+# find only the feature columns
+feature_cols = training_data.columns[training_data.columns.str.startswith('feature')]
+
+# select those columns out of the training dataset
+training_features = training_data[feature_cols]
+
+# create a model and fit the training data (~30 sec to run)
+model = sklearn.linear_model.LinearRegression()
+model.fit(training_features, training_data.target)
+
+## 4. Generate your first predictions
+Now that we have a trained model, we can use it to make predictions on the tournament data.
+
+
+
+# select the feature columns from the tournament data
+live_features = tournament_data[feature_cols]
+
+# predict the target on the live features
+predictions = model.predict(live_features)
+
+# predictions must have an `id` column and a `prediction` column
+predictions_df = tournament_data["id"].to_frame()
+predictions_df["prediction"] = predictions
+predictions_df.head()
+
+## 5. Make your first submission
+To enter the tournament, we must submit the predictions back to Numerai. We will use the `numerapi` library to do this.
+
+# Get your API keys and model_id from https://numer.ai/notebook
+public_id = "P55FSEKQK5DTAN2DAATFEBOGI3WMYRRD"
+secret_key = "N332O5A47IMPWNXM4DL3VCMLQELHGTXACE3DOSSHL3PBMZHCTPDA2D2D6ILD5WKE"
+model_id = "d3e842c8-0182-435f-99fb-d64b2c72f4a2"
+napi = numerapi.NumerAPI(public_id=public_id, secret_key=secret_key)
+
+# Upload your predictions
+predictions_df.to_csv("predictions.csv", index=False)
+submission_id = napi.upload_predictions("predictions.csv", model_id=model_id)
+
+# Done 🚀
